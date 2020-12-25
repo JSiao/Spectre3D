@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <time.h>
 #include "game.h"
+#include <stdio.h>
 
 struct game_struct globals;
 
@@ -57,6 +58,7 @@ int WinMain( HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sh
     unsigned long long tick = game_tick(&globals);
     game_process(&globals, tick);
     display_buffer(dc, r.right, r.bottom, &globals, 0, 0, 0, 0);
+    double new_tick = tick/(double) CLOCKS_PER_SEC;
   }
   game_end(&globals);
   return 0;
@@ -67,7 +69,6 @@ LRESULT CALLBACK window_process(HWND window, UINT u_message, WPARAM w_param, LPA
   switch (u_message)
   {
   case WM_PAINT:
-    draw_picture(window);
     break;
   case WM_SIZE:
     PostMessage(window, WM_PAINT, 0, 0);

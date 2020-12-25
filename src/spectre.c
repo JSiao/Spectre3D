@@ -1,4 +1,5 @@
 #include "spectre.h"
+#include "font.h"
 #include <math.h>
 #include <stdio.h>
 #include <time.h>
@@ -158,7 +159,7 @@ void play_logic_update(struct spectre_vars *this, U64 tick)
   if (collide(&this->player, &this->sprite_list[0]))
   {
     this->score ++;
-    if ((rand() % 4) == 0)
+    if ((rand() % 3) == 0)
     {
       this->map  = &_maps[rand()%NUMBER_OF_MAPS];
       teleport(this);
@@ -221,7 +222,7 @@ void play_video_update(struct spectre_vars *this, U64 tick)
   }
   static char score[32];
   sprintf(score, "Current Score: %d", this->score);
-  text_screen(score, 5, 5, 0x0000FF00);
+  font_puts(score, 5, 5, 0x0000FF00);
 }
 
 void video_render_wall(struct spectre_vars *this)
@@ -517,15 +518,15 @@ void help_video_update(struct spectre_vars *this, U64 tick)
     }
   }
 
-  text_screen("SPECTRE 3D (v0.7)- JUSTIN SIAO", 5, 5, 0x0000FF00);
-  text_screen("Instructions", 5, 20, 0x0000FF00);
-  text_screen("WASD to move", 5, 35, 0x0000FF00);
-  text_screen("Q & E to strafe", 5, 50, 0x0000FF00);
-  text_screen("H for help", 5, 65, 0x0000FF00);
-  text_screen("ESC to exit", 5, 80, 0x0000FF00);
-  text_screen("Collect the runes to score", 5, 95, 0x0000FF00);
-  text_screen("Avoid the spectres", 5, 110, 0x0000FF00);
-  text_screen("Press Enter to play", 5, 125, 0x0000FF00);
+  font_puts("SPECTRE 3D (v0.7)- JUSTIN SIAO", 5, 5, 0x0000FF00);
+  font_puts("Instructions", 5, 20, 0x0000FF00);
+  font_puts("WASD to move", 5, 35, 0x0000FF00);
+  font_puts("Q & E to strafe", 5, 50, 0x0000FF00);
+  font_puts("H for help", 5, 65, 0x0000FF00);
+  font_puts("ESC to exit", 5, 80, 0x0000FF00);
+  font_puts("Collect the runes to score", 5, 95, 0x0000FF00);
+  font_puts("Avoid the spectres", 5, 110, 0x0000FF00);
+  font_puts("Press Enter to play", 5, 125, 0x0000FF00);
 }
 
 
@@ -557,7 +558,7 @@ void retry_video_update(struct spectre_vars *this, U64 tick)
     }
   }
 
-  text_screen("CAUGHT! Retry? [Y/N]", (width / 2) - 75, (height / 2) - 25, 0x000000FF);
+  font_puts("CAUGHT! Retry? [Y/N]", (width / 2) - 75, (height / 2) - 25, 0x00FF0000);
 }
 
 void reset_game()
