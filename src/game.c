@@ -26,6 +26,7 @@ void game_init(struct game_struct *ptr)
   ptr->info.bmiHeader.biPlanes      = 1;
   ptr->info.bmiHeader.biBitCount    = 32;
   ptr->info.bmiHeader.biCompression = BI_RGB;
+  ptr->ctrl_active                  = 0;
   ptr->texts = NULL;
   ptr->last  = NULL;
   for (int x = 0; x < NUM_KEYS; x++)
@@ -125,4 +126,61 @@ void game_width_set(unsigned short val)
 char game_key(char code)
 {
   return globals.game_keys[code];
+}
+
+// Controller functions
+
+char controller_get_button(int index, short flag)
+{
+  if (globals.ctrl_active & (1 << index))
+  {
+    return globals.ctrls[index].flags & flag;
+  }
+  else
+  {
+    return 0;
+  }
+}
+
+short controller_get_axis(int index, short axis)
+{
+  if (globals.ctrl_active & (1 << index))
+  {
+    switch (axis)
+    {
+      case GAME_CTRL_LEFT_X:
+        return globals.ctrls[index].thumb_left_x;
+      case GAME_CTRL_LEFT_Y:
+        return globals.ctrls[index].thumb_left_y;
+      case GAME_CTRL_RIGHT_X:
+        return globals.ctrls[index].thumb_right_x;
+      case GAME_CTRL_RIGHT_Y:
+        return globals.ctrls[index].thumb_right_y;
+      default:
+        return 0;
+    }
+  }
+  else
+  {
+    return 0;
+  }
+}
+char controller_get_trigger(int index, short trigger)
+{
+  if (globals.ctrl_active & (1 << index))
+  {
+    switch (trigger)
+    {
+      case GAME_CTRL_TRIGGER_LEFT:
+        return globals.ctrls[index].trigger_left;
+      case GAME_CTRL_TRIGGER_RIGHT:
+        return globals.ctrls[index].trigger_right;
+      default:
+        return 0;
+    }
+  }
+  else
+  {
+    return 0;
+  }
 }

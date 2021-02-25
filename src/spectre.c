@@ -6,6 +6,7 @@
 
 #define PLAYER_SPEED 2.0
 #define SPRITE_SPEED 5.0
+#define THRESHOLD    16384
 
 struct spectre_vars spectre_globals;
 
@@ -83,7 +84,7 @@ void play_key_update(struct spectre_vars *this, U64 tick)
   {
     game_kill();
   }
-  if (game_key('Q'))
+  if (game_key('Q') || controller_get_axis(0, GAME_CTRL_LEFT_X) < -THRESHOLD)
   {
     if (!(*_map)[(int)(player->pos[S_X] - player->dir[S_Y] * move)][(int)(player->pos[S_Y])])
     {
@@ -94,7 +95,7 @@ void play_key_update(struct spectre_vars *this, U64 tick)
         player->pos[S_Y] += player->dir[S_X] * move;
     }
   }
-  if (game_key('E'))
+  if (game_key('E') || controller_get_axis(0, GAME_CTRL_LEFT_X) > THRESHOLD)
   {
     if (!(*_map)[(int)(player->pos[S_X] + player->dir[S_Y] * move)][(int)(player->pos[S_Y])])
     {
@@ -105,7 +106,7 @@ void play_key_update(struct spectre_vars *this, U64 tick)
         player->pos[S_Y] -= player->dir[S_X] * move;
     }
   }
-  if (game_key('W'))
+  if (game_key('W') || controller_get_axis(0, GAME_CTRL_LEFT_Y) > THRESHOLD)
   {
       if (!(*_map)[(int)(player->pos[S_X] + player->dir[S_X] * move)][(int)(player->pos[S_Y])])
       {
@@ -116,7 +117,7 @@ void play_key_update(struct spectre_vars *this, U64 tick)
           player->pos[S_Y] += player->dir[S_Y] * move;
       }
   }
-  if (game_key('S'))
+  if (game_key('S') || controller_get_axis(0, GAME_CTRL_LEFT_Y) < -THRESHOLD)
   {
     if (!(*_map)[(int)(player->pos[S_X] - player->dir[S_X] * move)][(int)(player->pos[S_Y])])
     {
@@ -127,7 +128,7 @@ void play_key_update(struct spectre_vars *this, U64 tick)
         player->pos[S_Y] -= player->dir[S_Y] * move;
     }
   }
-  if (game_key('D'))
+  if (game_key('D') || controller_get_axis(0, GAME_CTRL_RIGHT_X) > THRESHOLD)
   {
       double old_x     = player->dir[S_X];
       double old_y     = player->dir[S_Y];
@@ -138,7 +139,7 @@ void play_key_update(struct spectre_vars *this, U64 tick)
       this->plane[S_X] = plane_x * cos(-rotation) - plane_y * sin(-rotation);
       this->plane[S_Y] = plane_x * sin(-rotation) + plane_y * cos(-rotation);
   }
-  if (game_key('A'))
+  if (game_key('A') || controller_get_axis(0, GAME_CTRL_RIGHT_X) < -THRESHOLD)
   {
       double old_x     = player->dir[S_X];
       double old_y     = player->dir[S_Y];

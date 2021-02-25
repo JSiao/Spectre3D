@@ -4,8 +4,30 @@
 #include <time.h>
 #include "game.h"
 #include <stdio.h>
+#include <xinput.h>
 
 struct game_struct globals;
+
+X_INPUT_GET_STATE(XInputGetStateStub)
+{
+  return 0;
+}
+X_INPUT_SET_STATE(XInputSetStateStub)
+{
+  return 0;
+}
+
+x_input_get_state *XInputGetState_ = XInputGetStateStub;
+x_input_set_state *XInputSetState_ = XInputSetStateStub;
+static void win32_load_x_input(void)
+{
+  HMODULE x_input_module = LoadLibrary("xinput1_3.dll");
+  if (x_input_module)
+  {
+    XInputGetState = (x_input_get_state *)GetProcAddress(x_input_module, "XInputGetState");
+    XInputSetState = (x_input_set_state *)GetProcAddress(x_input_module, "XInputSetState");
+  }
+}
 
 LRESULT CALLBACK window_process(HWND, UINT, WPARAM, LPARAM);
 void draw_picture(HWND);
@@ -25,6 +47,7 @@ int WinMain( HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sh
   globals.is_running = 1;
   RegisterClass(&wc);
   game_init(&globals);
+  win32_load_x_input();
   HWND window = CreateWindowEx(
     0,
     class_name,
@@ -54,6 +77,29 @@ int WinMain( HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sh
     {
       TranslateMessage(&message);
       DispatchMessage(&message);
+    }
+    // TODO(jsiao): Should we poll more freq?
+    for(int ctrl_index = 0; ctrl_index < XUSER_MAX_COUNT; ctrl_index++)
+    {
+      XINPUT_STATE ctrl_state;
+      if(XInputGetState(ctrl_index,&ctrl_state) == ERROR_SUCCESS)
+      {
+        globals.ctrl_active |= 1 << ctrl_index;
+        XINPUT_GAMEPAD *game_pad = &ctrl_state.Gamepad;
+ 
+        globals.ctrls[ctrl_index].flags         = game_pad->wButtons;
+        globals.ctrls[ctrl_index].trigger_left  = game_pad->bLeftTrigger;
+        globals.ctrls[ctrl_index].trigger_right = game_pad->bRightTrigger;
+        globals.ctrls[ctrl_index].thumb_left_x  = game_pad->sThumbLX;
+        globals.ctrls[ctrl_index].thumb_left_y  = game_pad->sThumbLY;
+        globals.ctrls[ctrl_index].thumb_right_x = game_pad->sThumbRX;
+        globals.ctrls[ctrl_index].thumb_right_y = game_pad->sThumbRY;
+
+      }
+      else
+      {
+        globals.ctrl_active &= ~(1 << ctrl_index);
+      }
     }
     unsigned long long tick = game_tick(&globals);
     game_process(&globals, tick);
