@@ -21,18 +21,22 @@ void _game_init(struct game_struct *game)
   spectre_globals.key_update[STATE_PLAY]    = &play_key_update;
   spectre_globals.logic_update[STATE_PLAY]  = &play_logic_update;
   spectre_globals.video_update[STATE_PLAY]  = &play_video_update;
+  spectre_globals.audio_update[STATE_PLAY]  = &play_audio_update;
 
   spectre_globals.key_update[STATE_HELP]    = &help_key_update;
   spectre_globals.logic_update[STATE_HELP]  = &help_logic_update;
   spectre_globals.video_update[STATE_HELP]  = &help_video_update;
+  spectre_globals.audio_update[STATE_HELP]  = &help_audio_update;
 
   spectre_globals.key_update[STATE_ANIM]    = &anim_key_update;
   spectre_globals.logic_update[STATE_ANIM]  = &anim_logic_update;
   spectre_globals.video_update[STATE_ANIM]  = &anim_video_update;
+  spectre_globals.audio_update[STATE_ANIM]  = &anim_audio_update;
 
   spectre_globals.key_update[STATE_RETRY]   = &retry_key_update;
   spectre_globals.logic_update[STATE_RETRY] = &retry_logic_update;
   spectre_globals.video_update[STATE_RETRY] = &retry_video_update;
+  spectre_globals.audio_update[STATE_RETRY] = &retry_audio_update;
 
   spectre_globals.state = STATE_HELP;
   spectre_globals.pixel_buffer = _mem_alloc(sizeof(double) * game->width);
@@ -72,6 +76,8 @@ void _game_update(unsigned long long tick)
   (*spectre_globals.logic_update[spectre_globals.state])(&spectre_globals, tick);
   // Video Section
   (*spectre_globals.video_update[spectre_globals.state])(&spectre_globals, tick);
+  // Audio Section
+  (*spectre_globals.audio_update[spectre_globals.state])(&spectre_globals, tick);
 }
 
 void play_key_update(struct spectre_vars *this, U64 tick)
@@ -226,6 +232,73 @@ void play_video_update(struct spectre_vars *this, U64 tick)
   font_puts(score, 5, 5, 0x0000FF00);
 }
 
+void play_audio_update(struct spectre_vars *this, U64 tick)
+{
+  if (globals.sound_buffer)
+  {
+    int samples_per_second = 48000;
+    DWORD play_cursor = 0;
+    DWORD write_cursor = 0;
+    if(SUCCEEDED(IDirectSoundBuffer_GetCurrentPosition(globals.sound_buffer, 
+      &play_cursor, &write_cursor))
+    )
+    {
+      int Hz = 256;
+      int volume = 0;
+      uint32_t sample_idx = 0;
+      DWORD sqr_wave_ctr = 0;
+      int sqr_wave_per = samples_per_second / Hz;
+      void *region1, *region2;
+      DWORD r1_size, r2_size;
+      int bytes_per_sample = (sizeof(int16_t) * 2);
+      DWORD byte_to_lock = sample_idx * bytes_per_sample % globals.sound_buffer_size;
+      DWORD bytes_to_write ;
+      if (byte_to_lock > play_cursor)
+      {
+        bytes_to_write = (globals.sound_buffer_size - byte_to_lock);
+        bytes_to_write += play_cursor;
+      }
+      else
+      {
+        bytes_to_write = play_cursor - byte_to_lock;
+      }
+
+      if (SUCCEEDED(IDirectSoundBuffer_Lock(globals.sound_buffer,
+        byte_to_lock,
+        bytes_to_write,
+        &region1, &r1_size,
+        &region2, &r2_size,
+        DSBLOCK_FROMWRITECURSOR
+      )))
+      {
+
+        short *sample_out = (short *)region1;
+        DWORD r1_samples_count = r1_size/bytes_per_sample;
+        DWORD r2_samples_count = r2_size/bytes_per_sample;
+
+        for (DWORD sample_index = 0; sample_index < r1_samples_count; ++sample_index)
+        {
+          short sample_value = ((sample_idx / (sqr_wave_per/2))%2) ? volume: -volume;
+          *sample_out++ = sample_value;  // LEFT
+          *sample_out++ = sample_value;  // RIGHT
+          ++sample_idx;
+        }
+        sample_out = (short *)region2;
+        for (DWORD sample_index = 0; sample_index < r2_samples_count; ++sample_index)
+        {
+          short sample_value = ((sample_idx / (sqr_wave_per/2))%2) ? volume: -volume;
+          *sample_out++ = sample_value;  // LEFT
+          *sample_out++ = sample_value;  // RIGHT
+          ++sample_idx;
+        }
+        IDirectSoundBuffer_Unlock(globals.sound_buffer, 
+          region1, r1_size, region2, r2_size
+        );
+      }
+    }
+  }
+}
+
 void video_render_wall(struct spectre_vars *this)
 {
   char (*world_map)[24][24] = this->map;
@@ -375,6 +448,7 @@ U8 video_render_sprite(struct spectre_vars *this, int sprite_id)
       if (transform_y > 0 && stripe > 0 && stripe < size_x && transform_y < this->pixel_buffer[stripe] )
       {
         video_sprite_line(this, stripe, start_y, end_y, tex_x, sprite->type, sprite->sprite, side, sprite->opacity);
+	sprite->active = 4 * CLOCKS_PER_SEC;
         return_val = 1;
       }
     }
@@ -528,6 +602,18 @@ void help_video_update(struct spectre_vars *this, U64 tick)
   font_puts("Collect the runes to score", 5, 95, 0x0000FF00);
   font_puts("Avoid the spectres", 5, 110, 0x0000FF00);
   font_puts("Press Enter to play", 5, 125, 0x0000FF00);
+  if (globals.audio_error)
+  {
+    char code[40] = "Code: 0";
+    code[6] += globals.audio_error;
+    font_puts("Sound Failed ", 5, 140, 0x000000FF);
+    font_puts(code, 5, 155, 0x00FF0000);
+  }
+}
+
+void help_audio_update(struct spectre_vars *this, U64 tick)
+{
+  play_audio_update(this, tick);
 }
 
 
@@ -562,6 +648,11 @@ void retry_video_update(struct spectre_vars *this, U64 tick)
   font_puts("CAUGHT! Retry? [Y/N]", (width / 2) - 75, (height / 2) - 25, 0x00FF0000);
 }
 
+void retry_audio_update(struct spectre_vars *this, U64 tick)
+{
+  play_audio_update(this, tick);
+}
+
 void reset_game()
 {
   spectre_globals.map  = &_maps[0];
@@ -574,6 +665,7 @@ void reset_game()
   spectre_globals.sprite_list[0].direction = DIR_DISABLED;
   spectre_globals.sprite_list[0].sprite    = &rune;
   spectre_globals.sprite_list[0].opacity   = 0x7F;
+  spectre_globals.sprite_list[0].active    = 0;
 
   spectre_globals.sprite_list[1].pos[S_X]  = 1.5;
   spectre_globals.sprite_list[1].pos[S_Y]  = 1.5;
@@ -583,6 +675,7 @@ void reset_game()
   spectre_globals.sprite_list[1].direction = 1;
   spectre_globals.sprite_list[1].sprite    = &spectre;
   spectre_globals.sprite_list[1].opacity   = 0xFF;
+  spectre_globals.sprite_list[1].active    = 0;
 
   spectre_globals.sprite_list[2].pos[S_X]  = 22.5;
   spectre_globals.sprite_list[2].pos[S_Y]  = 1.5;
@@ -592,6 +685,7 @@ void reset_game()
   spectre_globals.sprite_list[2].direction = 1;
   spectre_globals.sprite_list[2].sprite    = &spectre;
   spectre_globals.sprite_list[2].opacity   = 0xFF;
+  spectre_globals.sprite_list[2].active    = 0;
 
   spectre_globals.sprite_list[3].pos[S_X]  = 5.5;
   spectre_globals.sprite_list[3].pos[S_Y]  = 22.5;
@@ -601,6 +695,7 @@ void reset_game()
   spectre_globals.sprite_list[3].direction = 1;
   spectre_globals.sprite_list[3].sprite    = &spectre;
   spectre_globals.sprite_list[3].opacity   = 0xFF;
+  spectre_globals.sprite_list[3].active    = 0;
 
   spectre_globals.sprite_stack[0] = 0;
   spectre_globals.sprite_stack[1] = 1;
@@ -616,7 +711,7 @@ void reset_game()
   spectre_globals.score = 0;
   spectre_globals.anim  = 2;
   if (rand() % 2)
-  {
+  { 
     spectre_globals.animation = &animation1;
   }
   else
@@ -664,8 +759,12 @@ void move_sprite(struct spectre_vars * this, int index, U64 tick)
     }
     else
     {
-      sprite->pos[S_Y] += dy * speed;
-      sprite->pos[S_X] += dx * speed;
+      double sprite_distance = distances(sprite, player);
+      if (sprite_distance > 1 || sprite->active)
+      {
+        sprite->pos[S_Y] += dy * speed;
+        sprite->pos[S_X] += dx * speed;
+      }
     }
   }
   else
@@ -695,6 +794,14 @@ void move_sprite(struct spectre_vars * this, int index, U64 tick)
       }
     }
   }
+  if (sprite->active)
+  {
+    sprite->active -= 1;
+    if (sprite->active < 0)
+    {
+      sprite->active = 0;
+    }
+  }
 }
 
 void anim_key_update(struct spectre_vars *this, U64 tick)
@@ -715,6 +822,11 @@ void anim_logic_update(struct spectre_vars *this, U64 tick)
 void anim_video_update(struct spectre_vars *this, U64 tick)
 {
   this->animation(this, tick);
+}
+
+void anim_audio_update(struct spectre_vars *this, U64 tick)
+{
+  play_audio_update(this, tick);
 }
 
 void animation1(struct spectre_vars *this, U64 tick)

@@ -5,6 +5,7 @@
 #include "game.h"
 #include <stdio.h>
 #include <xinput.h>
+// #include <dsound.h>
 
 struct game_struct globals;
 
@@ -33,6 +34,7 @@ LRESULT CALLBACK window_process(HWND, UINT, WPARAM, LPARAM);
 void draw_picture(HWND);
 static void display_buffer(HDC, int, int, struct game_struct*, int, int, int, int);
 void gdi_pixels(HDC);
+static int win32_init_dsound(HWND, int, int);
 
 int WinMain( HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int show_cmd)
 {
@@ -69,6 +71,13 @@ int WinMain( HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sh
   HDC dc = GetDC(window);
   gdi_pixels(dc);
   globals.window = window;
+  DWORD sound_buffer_size = 48000;
+  globals.audio_error=win32_init_dsound(window, sound_buffer_size, sound_buffer_size * sizeof(short) * 2);
+  if (globals.sound_buffer)
+  {
+    IDirectSoundBuffer_Play(globals.sound_buffer, 0, 0, DSBPLAY_LOOPING);
+    globals.sound_buffer_size = sound_buffer_size;
+  }
   while (globals.is_running)
   {
     RECT r;
@@ -191,4 +200,57 @@ void display_buffer(HDC dc, int w_width, int w_height, struct game_struct* ptr, 
     _mem_free(temp);
   }
   globals.last = NULL;
+}
+
+int win32_init_dsound(HWND window, int buffer_size, int samples_per_sec)
+{
+  HMODULE dsoundlibrary = LoadLibraryA("dsound.dll");
+  if (dsoundlibrary)
+  {
+    direct_sound_create *directSoundCreate = (direct_sound_create *)GetProcAddress(dsoundlibrary, "DirectSoundCreate");
+    LPDIRECTSOUND direct_sound;
+    if (directSoundCreate && SUCCEEDED(directSoundCreate(0, &direct_sound, 0)))
+    {
+      WAVEFORMATEX wave_format = {};
+      wave_format.wFormatTag = WAVE_FORMAT_PCM;
+      wave_format.nChannels = 2;
+      wave_format.nSamplesPerSec = samples_per_sec;
+      wave_format.wBitsPerSample = 16;
+      wave_format.nBlockAlign = (wave_format.nChannels * wave_format.wBitsPerSample) / 8;
+      wave_format.nAvgBytesPerSec = wave_format.nSamplesPerSec * wave_format.nBlockAlign;
+      wave_format.cbSize = 0;
+      if(SUCCEEDED(IDirectSound_SetCooperativeLevel(direct_sound, window, DSSCL_PRIORITY)))
+      {
+        DSBUFFERDESC buffer_desc = {};
+        buffer_desc.dwSize = sizeof(buffer_desc);
+        buffer_desc.dwFlags = DSBCAPS_PRIMARYBUFFER;
+        LPDIRECTSOUNDBUFFER primary_buffer;
+        if (SUCCEEDED(IDirectSound_CreateSoundBuffer(direct_sound, &buffer_desc, &primary_buffer, 0)))
+        {
+          if (SUCCEEDED(IDirectSoundBuffer_SetFormat(primary_buffer, &wave_format)))
+          {
+          }
+          else return 5;
+        }
+        else return 4;
+      }
+      else return 3;
+
+      
+      DSBUFFERDESC buffer_desc = {};
+      buffer_desc.dwSize = sizeof(buffer_desc);
+      buffer_desc.dwFlags = 0;
+      buffer_desc.dwBufferBytes = buffer_size;
+      buffer_desc.lpwfxFormat = &wave_format;
+      LPDIRECTSOUNDBUFFER secondary_buffer;
+      if (SUCCEEDED(IDirectSound_CreateSoundBuffer(direct_sound, &buffer_desc, &secondary_buffer, 0)))
+      {
+        globals.sound_buffer = secondary_buffer;
+        return 0;
+      }
+      else return 6;
+    }
+    else return 2;
+  }
+  return 1;
 }

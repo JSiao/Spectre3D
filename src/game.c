@@ -184,3 +184,9 @@ char controller_get_trigger(int index, short trigger)
     return 0;
   }
 }
+
+void game_set_sound_buffer(LPDIRECTSOUNDBUFFER _sound_buffer, DWORD _buffer_size)
+{
+  globals.sound_buffer = _sound_buffer;
+  globals.sound_buffer_size = _buffer_size;
+}

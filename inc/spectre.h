@@ -58,6 +58,7 @@ struct sprite
   char     direction;
   char   (*sprite)[SPRITE_SIZE][SPRITE_SIZE];
   U8 opacity;
+  int active;
 };
 
 struct spectre_vars
@@ -75,6 +76,7 @@ struct spectre_vars
   void (*key_update[TOTAL_STATES])(struct spectre_vars*, U64);
   void (*logic_update[TOTAL_STATES])(struct spectre_vars*, U64);
   void (*video_update[TOTAL_STATES])(struct spectre_vars*, U64);
+  void (*audio_update[TOTAL_STATES])(struct spectre_vars*, U64);
   void (*animation)(struct spectre_vars*, U64);
 }; 
 
@@ -303,18 +305,22 @@ U32 pallette_val(U8, U8, U8);
 void play_key_update(struct spectre_vars*, U64 tick);
 void play_logic_update(struct spectre_vars*, U64 tick);
 void play_video_update(struct spectre_vars*, U64 tick);
+void play_audio_update(struct spectre_vars*, U64 tick);
 
 void help_key_update(struct spectre_vars*, U64 tick);
 void help_logic_update(struct spectre_vars*, U64 tick);
 void help_video_update(struct spectre_vars*, U64 tick);
+void help_audio_update(struct spectre_vars*, U64 tick);
 
 void anim_key_update(struct spectre_vars*, U64 tick);
 void anim_logic_update(struct spectre_vars*, U64 tick);
 void anim_video_update(struct spectre_vars*, U64 tick);
+void anim_audio_update(struct spectre_vars*, U64 tick);
 
 void retry_key_update(struct spectre_vars*, U64 tick);
 void retry_logic_update(struct spectre_vars*, U64 tick);
 void retry_video_update(struct spectre_vars*, U64 tick);
+void retry_audio_update(struct spectre_vars*, U64 tick);
 
 void reset_game();
 

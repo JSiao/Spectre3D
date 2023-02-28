@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
+#include <dsound.h>
 
 #include "tools.h"
 
@@ -84,6 +85,9 @@ struct game_struct
   HWND window;
   struct text_node *texts;
   struct text_node *last;
+  LPDIRECTSOUNDBUFFER sound_buffer;
+  DWORD sound_buffer_size;
+  int audio_error;
 };
 
 
@@ -117,6 +121,7 @@ void debug_msg(const char*);
 void text_screen(const char*, int, int, U32);
 
 void game_kill(void);
+void game_set_sound_buffer(LPDIRECTSOUNDBUFFER, DWORD);
 
 char game_key(char);
 
